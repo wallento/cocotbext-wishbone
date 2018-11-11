@@ -194,16 +194,16 @@ class WishboneSlave(Wishbone):
 
 
     def _respond(self):
-        valid =  bool(self.bus.cyc.getvalue()) and bool(self.bus.stb.getvalue())
+        valid = self.bus.cyc.value and self.bus.stb.value
         #if there is a stall signal, take it into account        
         if hasattr(self.bus, "stall"):
-            valid = valid and not bool(self.bus.stall.getvalue())
+            valid = valid and not self.bus.stall.value
         
         if valid:
             #wait before replying ?    
             waitAck = self._waitAckGen.next()
             #Response: rddata/don't care        
-            if (not bool(self.bus.we.getvalue())):
+            if not self.bus.we.value:
                 rd = self._datGen.next()
             else:
                 rd = 0
@@ -214,13 +214,13 @@ class WishboneSlave(Wishbone):
                 raise TestFailure("Tried to assign unknown reply type (%u) to slave reply. Valid is 1-3 (ack, err, rty)" %  reply)
             
             wr = None
-            if bool(self.bus.we.getvalue()):
-                wr = self.bus.datwr.getvalue()
+            if self.bus.we.value:
+                wr = self.bus.datwr.value
             
             #get the time the master idled since the last operation
             #TODO: subtract our own stalltime or, if we're not pipelined, time since last ack    
             idleTime = self._clk_cycle_count - self._lastTime -1    
-            res =  WBRes(ack=reply, sel=self.bus.sel.getvalue(), adr=self.bus.adr.getvalue(), 
+            res =  WBRes(ack=reply, sel=self.bus.sel.value, adr=self.bus.adr.value,
                          datrd=rd, datwr=wr, waitIdle=idleTime, waitStall=self._stallCount, waitAck=waitAck)               
             
             #add whats going to happen to the result buffer
@@ -236,15 +236,14 @@ class WishboneSlave(Wishbone):
         clkedge = RisingEdge(self.clock)
         #respong and notify the callback function  
         while True:
-            if int(self._cycle) < int(self.bus.cyc.getvalue()):
+            if self._cycle == 0 and self.bus.cyc.value == 1:
                 self._lastTime = self._clk_cycle_count -1
                 
             self._respond()
-            if int(self._cycle) > int(self.bus.cyc.getvalue()):
+            if self._cycle == 1 and self.bus.cyc.value == 0:
                 self._recv(self._res_buf)
                 self._reply_Q.queue.clear()
                 self._res_buf = []
                 
-            self._cycle = self.bus.cyc.getvalue()
+            self._cycle = self.bus.cyc.value
             yield clkedge
-            

@@ -167,7 +167,7 @@ class WishboneMaster(Wishbone):
         count = 0
         if hasattr(self.bus, "stall"):
             count = 0            
-            while self.bus.stall.getvalue():
+            while self.bus.stall.value == 1:
                 yield clkedge
                 count += 1
                 if (not (self._timeout is None)):
@@ -185,7 +185,7 @@ class WishboneMaster(Wishbone):
         clkedge = RisingEdge(self.clock)
         count = 0
         if not hasattr(self.bus, "stall"):
-            while not self._get_reply():
+            while not self._get_reply()[0]:
                 yield clkedge
                 count += 1
             self.log.debug("Waited %u cycles for ackknowledge" % count)
@@ -193,19 +193,21 @@ class WishboneMaster(Wishbone):
 
 
     def _get_reply(self):
-        #helper function for slave acks
-        tmpAck = int(self.bus.ack.getvalue())
-        tmpErr = 0
-        tmpRty = 0
-        if hasattr(self.bus, "err"):
-            tmpErr = int(self.bus.err.getvalue())
-        if hasattr(self.bus, "rty"):
-            tmpRty = int(self.bus.rty.getvalue())
-        #check if more than one line was raised
-        if ((tmpAck + tmpErr + tmpRty)  > 1):
-            raise TestFailure("Slave raised more than one reply line at once! ACK: %u ERR: %u RTY: %u" % (tmpAck, tmpErr, tmpRty))
-        #return 0 if no reply, 1 for ACK, 2 for ERR, 3 for RTY. use 'replyTypes' Dict for lookup
-        return (tmpAck + 2 * tmpErr + 3 * tmpRty)
+        code = 0 # 0 if no reply, 1 for ACK, 2 for ERR, 3 for RTY
+        ack = self.bus.ack.value == 1
+        if ack:
+            code = 1
+        if hasattr(self.bus, "err") and self.bus.err.value == 1:
+            if ack:
+                raise TestFailure("Slave raised ACK and ERR line")
+            ack = True
+            code = 2
+        if hasattr(self.bus, "rty") and self.bus.rty.value == 1:
+            if ack:
+                raise TestFailure("Slave raised {} and RTY line".format("ACK" if code == 1 else "ERR"))
+            ack = True
+            code = 3
+        return ack, code
 
 
     @coroutine 
@@ -216,10 +218,10 @@ class WishboneMaster(Wishbone):
         count = 0
         clkedge = RisingEdge(self.clock)
         while self.busy:
-            reply = self._get_reply()
+            ack, reply = self._get_reply()
             # valid reply?
-            if(bool(reply)):
-                datrd = int(self.bus.datrd.getvalue())
+            if ack:
+                datrd = self.bus.datrd.value
                 #append reply and meta info to result buffer
                 tmpRes =  WBRes(ack=reply, sel=None, adr=None, datrd=datrd, datwr=None, waitIdle=None, waitStall=None, waitAck=self._clk_cycle_count)               
                 self._res_buf.append(tmpRes)
