@@ -255,11 +255,11 @@ class WishboneMaster(Wishbone):
             stalled = yield self._wait_stall()
             #append operation and meta info to auxiliary buffer
             self._aux_buf.append(WBAux(sel, adr, datwr, stalled, idle, self._clk_cycle_count))
+            # non pipelined wishbone
+            yield self._wait_ack()
             #reset strobe and write enable without advancing time
             self.bus.stb    <= 0
             self.bus.we     <= 0
-            # non pipelined wishbone
-            yield self._wait_ack()
         else:
             self.log.error("Cannot drive the Wishbone bus outside a cycle!")
 
