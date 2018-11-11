@@ -277,18 +277,16 @@ class WishboneMaster(Wishbone):
         clkedge = RisingEdge(self.clock)
         yield clkedge
         if is_sequence(arg):
-            if len(arg) < 1:
+            self._op_cnt = len(arg)
+            if self._op_cnt < 1:
                 self.log.error("List contains no operations to carry out")
             else:
-                self._op_cnt = len(arg)
-                firstword = True
+                result = []
+                yield self._open_cycle()
+
                 for op in arg:
                     if not isinstance(op, WBOp):
                         raise TestFailure("Sorry, argument must be a list of WBOp (Wishbone Operation) objects!")    
-                    if firstword:
-                        firstword = False
-                        result = []
-                        yield self._open_cycle()
 
                     if op.dat is not None:
                         we  = 1
@@ -299,6 +297,7 @@ class WishboneMaster(Wishbone):
                     yield self._drive(we, op.adr, dat, op.sel, op.idle)
                     self.log.debug("#%3u WE: %s ADR: 0x%08x DAT: 0x%08x SEL: 0x%1x IDLE: %3u" % (cnt, we, op.adr, dat, op.sel, op.idle))
                     cnt += 1
+
                 yield self._close_cycle()
 
                 #do pick and mix from result- and auxiliary buffer so we get all operation and meta info
