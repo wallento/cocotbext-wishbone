@@ -5,6 +5,7 @@ from cocotb.decorators import coroutine
 from cocotb.triggers import RisingEdge, Event
 from cocotb.drivers import BusDriver
 from cocotb.result import ReturnValue, TestFailure
+from cocotb.binary import BinaryValue
 from cocotb.decorators import public
 
 
@@ -19,7 +20,7 @@ class WBAux():
 
     wrap meta informations on bus transaction (internal only)
     """
-    def __init__(self, sel=0xf, adr=0, datwr=None, waitStall=0, waitIdle=0, tsStb=0):
+    def __init__(self, sel=None, adr=0, datwr=None, waitStall=0, waitIdle=0, tsStb=0):
         self.sel        = sel
         self.adr        = adr
         self.datwr      = datwr
@@ -34,8 +35,14 @@ class WBOp():
     Wishbone Operations Wrapper Class
 
     an attempt to wrap em tidy
+
+    Args:
+        adr: address of the operation
+        dat: data to write, None indicates a read cycle
+        idle: number of clock cycles between asserting cyc and stb
+        sel: the selection mask for the operation
     """
-    def __init__(self, adr=0, dat=None, idle=0, sel=0xf):
+    def __init__(self, adr=0, dat=None, idle=0, sel=None):
         self.adr    = adr
         self.dat    = dat
         self.sel    = sel
@@ -49,7 +56,7 @@ class WBRes():
     What's happend on the bus plus meta information on timing
     """
 
-    def __init__(self, ack=0, sel=0xf, adr=0, datrd=None, datwr=None, waitIdle=0, waitStall=0, waitAck=0):
+    def __init__(self, ack=0, sel=None, adr=0, datrd=None, datwr=None, waitIdle=0, waitStall=0, waitAck=0):
         self.ack        = ack
         self.sel        = sel
         self.adr        = adr
@@ -65,8 +72,8 @@ class Wishbone(BusDriver):
     """
     Wishbone
     """
-    _signals = ["cyc", "stb", "we", "sel", "adr", "datwr", "datrd", "ack"]
-    _optional_signals = ["err", "stall", "rty"]
+    _signals = ["cyc", "stb", "we", "adr", "datwr", "datrd", "ack"]
+    _optional_signals = ["sel", "err", "stall", "rty"]
 
 
     def __init__(self, entity, name, clock, width=32, **kwargs):
@@ -79,9 +86,10 @@ class Wishbone(BusDriver):
         self.bus.adr.setimmediatevalue(0)
         self.bus.datwr.setimmediatevalue(0)
 
-        v = self.bus.sel.value
-        v.binstr = "1" * len(self.bus.sel)
-        self.bus.sel <= v
+        if hasattr(self.bus, "sel"):
+            v = self.bus.sel.value
+            v.binstr = "1" * len(self.bus.sel)
+            self.bus.sel <= v
 
 
 class WishboneMaster(Wishbone):
@@ -248,7 +256,8 @@ class WishboneMaster(Wishbone):
             # drive outputs    
             self.bus.stb    <= 1
             self.bus.adr    <= adr
-            self.bus.sel    <= sel
+            if hasattr(self.bus, "sel"):
+                self.bus.sel <= sel if sel is not None else BinaryValue("1" * len(self.bus.sel))
             self.bus.datwr  <= datwr
             self.bus.we     <= we
             yield clkedge
@@ -296,7 +305,10 @@ class WishboneMaster(Wishbone):
                         we  = 0
                         dat = 0
                     yield self._drive(we, op.adr, dat, op.sel, op.idle)
-                    self.log.debug("#%3u WE: %s ADR: 0x%08x DAT: 0x%08x SEL: 0x%1x IDLE: %3u" % (cnt, we, op.adr, dat, op.sel, op.idle))
+                    if op.sel is not None:
+                        self.log.debug("#%3u WE: %s ADR: 0x%08x DAT: 0x%08x SEL: 0x%1x IDLE: %3u" % (cnt, we, op.adr, dat, op.sel, op.idle))
+                    else:
+                        self.log.debug("#%3u WE: %s ADR: 0x%08x DAT: 0x%08x SEL: None  IDLE: %3u" % (cnt, we, op.adr, dat, op.idle))
                     cnt += 1
 
                 yield self._close_cycle()

@@ -41,8 +41,8 @@ class Wishbone(BusMonitor):
     """Wishbone
     """
     
-    _signals = ["cyc", "stb", "we", "sel", "adr", "datwr", "datrd", "ack"]
-    _optional_signals = ["err", "stall", "rty"]
+    _signals = ["cyc", "stb", "we", "adr", "datwr", "datrd", "ack"]
+    _optional_signals = ["sel", "err", "stall", "rty"]
     replyTypes = {1 : "ack", 2 : "err", 3 : "rty"}  
 
     def __init__(self, *args, **kwargs):
@@ -218,7 +218,8 @@ class WishboneSlave(Wishbone):
             #get the time the master idled since the last operation
             #TODO: subtract our own stalltime or, if we're not pipelined, time since last ack    
             idleTime = self._clk_cycle_count - self._lastTime -1    
-            res =  WBRes(ack=reply, sel=self.bus.sel.value, adr=self.bus.adr.value,
+            _sel = self.bus.sel.value if hasattr(self.bus, "sel") else None
+            res =  WBRes(ack=reply, sel=_sel, adr=self.bus.adr.value,
                          datrd=rd, datwr=wr, waitIdle=idleTime, waitStall=self._stallCount, waitAck=waitAck)               
             
             #add whats going to happen to the result buffer
