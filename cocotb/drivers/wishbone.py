@@ -193,11 +193,16 @@ class WishboneMaster(Wishbone):
         #wait for acknownledgement before continuing - Classic Wishbone without pipelining
         clkedge = RisingEdge(self.clock)
         count = 0
+        if hasattr(self.bus, "stall"):
+            self.bus.stb    <= 0
+        while not self._get_reply()[0]:
+            yield clkedge
+            count += 1
         if not hasattr(self.bus, "stall"):
-            while not self._get_reply()[0]:
-                yield clkedge
-                count += 1
-            self.log.debug("Waited %u cycles for ackknowledge" % count)
+            self.bus.stb    <= 0
+        self._acked_ops += 1
+        self.log.debug("Waited %u cycles for ackknowledge" % count)
+
         raise ReturnValue(count)    
 
 
@@ -265,10 +270,7 @@ class WishboneMaster(Wishbone):
             stalled = yield self._wait_stall()
             #append operation and meta info to auxiliary buffer
             self._aux_buf.append(WBAux(sel, adr, datwr, stalled, idle, self._clk_cycle_count))
-            # non pipelined wishbone
             yield self._wait_ack()
-            #reset strobe and write enable without advancing time
-            self.bus.stb    <= 0
             self.bus.we     <= 0
         else:
             self.log.error("Cannot drive the Wishbone bus outside a cycle!")

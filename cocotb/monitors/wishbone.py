@@ -112,7 +112,7 @@ class WishboneSlave(Wishbone):
         self._waitAckGen        = self.defaultGen0()
         if waitAckGen is not None:
             self._waitAckGen    = waitAckGen 
-        self._waitStallGen      = self.defaultTupleGen()
+        self._waitStallGen      = self.defaultGen0()
         if waitStallGen is not None:
             self._waitStallGen  = self.bitSeqGen(waitStallGen)
             
