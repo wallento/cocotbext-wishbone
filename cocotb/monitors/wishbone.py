@@ -5,7 +5,10 @@ from cocotb.monitors    import BusMonitor
 from cocotb.triggers    import RisingEdge
 from cocotb.result      import TestFailure
 from cocotb.decorators  import public  
-import Queue
+try:
+    from Queue import Queue # Python 2.x
+except ImportError:
+    from queue import Queue
 
 
 class WBAux():
@@ -64,7 +67,7 @@ class WishboneSlave(Wishbone):
     
     def bitSeqGen(self, tupleGen):
         while True: 
-            [highCnt, lowCnt] = tupleGen.next()
+            [highCnt, lowCnt] = next(tupleGen)
             #make sure there's at least one low cycle in here            
             if lowCnt < 1:
                 lowCnt = 1
@@ -77,10 +80,6 @@ class WishboneSlave(Wishbone):
                 yield bit
     
     
-    def defaultTupleGen(self):
-        while True:        
-            yield int(0), int(1)      
-    
     def defaultGen0(self):
         while True:        
             yield int(0)
@@ -88,8 +87,7 @@ class WishboneSlave(Wishbone):
     def defaultGen1(self):
         while True:        
             yield int(1)          
-    
-    
+
     def __init__(self, *args, **kwargs):
         datGen = kwargs.pop('datgen', None)
         ackGen = kwargs.pop('ackgen', None)
@@ -97,7 +95,7 @@ class WishboneSlave(Wishbone):
         waitStallGen = kwargs.pop('waitstallgen', None)
         #init instance variables    
         self._acked_ops      = 0  # ack cntr. wait for equality with number of Ops before releasing lock
-        self._reply_Q        = Queue.Queue() # save datwr, sel, idle
+        self._reply_Q        = Queue() # save datwr, sel, idle
         self._res_buf        = [] # save readdata/ack/err/rty
         self._clk_cycle_count = 0
         self._cycle          = False
@@ -145,7 +143,7 @@ class WishboneSlave(Wishbone):
         # if stall drops, keep the value for one more clock cycle
         while True:
             if hasattr(self.bus, "stall"):
-                tmpStall = self._waitStallGen.next()
+                tmpStall = next(self._waitStallGen)
                 self.bus.stall <= tmpStall
                 if bool(tmpStall):                                
                     self._stallCount += 1                    
@@ -201,15 +199,15 @@ class WishboneSlave(Wishbone):
         
         if valid:
             #wait before replying ?    
-            waitAck = self._waitAckGen.next()
+            waitAck = next(self._waitAckGen)
             #Response: rddata/don't care        
             if not self.bus.we.value:
-                rd = self._datGen.next()
+                rd = next(self._datGen)
             else:
                 rd = 0
          
             #Response: ack/err/rty
-            reply = self._ackGen.next()
+            reply = next(self._ackGen)
             if reply not in self.replyTypes:
                 raise TestFailure("Tried to assign unknown reply type (%u) to slave reply. Valid is 1-3 (ack, err, rty)" %  reply)
             
