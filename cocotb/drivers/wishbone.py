@@ -60,6 +60,7 @@ class WBRes():
         self.waitIdle   = waitIdle
 
 
+# TODO: Use of pipelined operations
 class Wishbone(BusDriver):
     """
     Wishbone
