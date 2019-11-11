@@ -68,8 +68,8 @@ class Wishbone(BusDriver):
     _optional_signals = ["err", "stall", "rty"]
 
 
-    def __init__(self, entity, name, clock, width=32):
-        BusDriver.__init__(self, entity, name, clock)
+    def __init__(self, entity, name, clock, width=32, **kwargs):
+        BusDriver.__init__(self, entity, name, clock, **kwargs)
         # Drive some sensible defaults (setimmediatevalue to avoid x asserts)
         self._width = width
         self.bus.cyc.setimmediatevalue(0)
@@ -87,7 +87,7 @@ class WishboneMaster(Wishbone):
     """
     Wishbone master
     """
-    def __init__(self, entity, name, clock, timeout=None, width=32):
+    def __init__(self, entity, name, clock, timeout=None, width=32, **kwargs):
         sTo = ", no cycle timeout"
         if timeout is not None:
             sTo = ", cycle timeout is %u clockcycles" % timeout
@@ -99,7 +99,7 @@ class WishboneMaster(Wishbone):
         self._aux_buf           = []
         self._op_cnt            = 0
         self._clk_cycle_count   = 0
-        Wishbone.__init__(self, entity, name, clock, width)
+        Wishbone.__init__(self, entity, name, clock, width, **kwargs)
         self.log.info("Wishbone Master created%s" % sTo)
 
 
