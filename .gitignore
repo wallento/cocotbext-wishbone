@@ -1,0 +1,7 @@
+__pycache__
+.eggs/
+.idea/
+*.egg-info/
+*~
+dist/
+cocomod/*/version.py
