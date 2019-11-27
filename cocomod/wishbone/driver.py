@@ -76,7 +76,9 @@ class Wishbone(BusDriver):
     _optional_signals = ["sel", "err", "stall", "rty"]
 
 
-    def __init__(self, entity, name, clock, width=32, **kwargs):
+    def __init__(self, entity, name, clock, width=32, signals_dict=None, **kwargs):
+        if signals_dict is not None:
+            self._signals=signals_dict
         BusDriver.__init__(self, entity, name, clock, **kwargs)
         # Drive some sensible defaults (setimmediatevalue to avoid x asserts)
         self._width = width
