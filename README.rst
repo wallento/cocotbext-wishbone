@@ -111,6 +111,7 @@ If we want to print value read, we just have to read datrd value like that::
     dut.log.info(f"Returned values : {rvalues}")
 
 Which will print a log message like following::
+
    1560.00ns INFO     Returned values : [0000000000000000, 0000000000000000, 0000000100000001, 0000000000000000]
 
 We can add some write operations in our send_cycle(), by adding a second value
