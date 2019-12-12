@@ -41,12 +41,14 @@ class WBOp():
         dat: data to write, None indicates a read cycle
         idle: number of clock cycles between asserting cyc and stb
         sel: the selection mask for the operation
+        acktimeout: number of maximum clock cycles before asserting ack
     """
-    def __init__(self, adr=0, dat=None, idle=0, sel=None):
+    def __init__(self, adr=0, dat=None, idle=0, sel=None, acktimeout=0):
         self.adr    = adr
         self.dat    = dat
         self.sel    = sel
         self.idle   = idle
+        self.acktimeout = acktimeout
 
 @public
 class WBRes():
@@ -195,9 +197,17 @@ class WishboneMaster(Wishbone):
         count = 0
         if hasattr(self.bus, "stall"):
             self.bus.stb    <= 0
-        while not self._get_reply()[0]:
-            yield clkedge
-            count += 1
+        if self._acktimeout == 0:
+            while not self._get_reply()[0] :
+                yield clkedge
+                count += 1
+        else:
+            while (not self._get_reply()[0]) and (count < self._acktimeout) :
+                yield clkedge
+                count += 1
+        if (self._acktimeout != 0) and (count >= self._acktimeout):
+            raise TestFailure("Timeout of %u clock cycles reached when waiting for acknowledge" % count)
+
         if not hasattr(self.bus, "stall"):
             self.bus.stb    <= 0
         self._acked_ops += 1
@@ -299,6 +309,8 @@ class WishboneMaster(Wishbone):
                 for op in arg:
                     if not isinstance(op, WBOp):
                         raise TestFailure("Sorry, argument must be a list of WBOp (Wishbone Operation) objects!")    
+
+                    self._acktimeout = op.acktimeout
 
                     if op.dat is not None:
                         we  = 1
