@@ -152,7 +152,8 @@ class WishboneSlave(Wishbone):
                 else:
                     yield clkedge                    
                     self._stallCount = 0
-            
+            else:
+                break
             
         
     @coroutine
