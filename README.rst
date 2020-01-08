@@ -125,4 +125,56 @@ address 3.
 Monitor
 ^^^^^^^
 
-TODO
+Monitor instantiation works similarly to Driver instantiation. First import
+right module ::
+
+  from cocomod.wishbone.monitor import WishboneSlave
+
+Then instantiate the object with right signals names ::
+
+  wbm = WishboneSlave(dut, "io_wbm", dut.clock,
+                   width=16,   # size of data bus
+                   signals_dict={"cyc":  "cyc_o",
+                               "stb":  "stb_o",
+                               "we":   "we_o",
+                               "adr":  "adr_o",
+                               "datwr":"dat_o",
+                               "datrd":"dat_i",
+                               "ack":  "ack_i" })
+
+WishboneSlave is a monitor, then it's mainly passive class. It will supervise
+the wishbone signal and records transaction in a list named _recvQ.
+Each time the monitor detect a transaction on the bus, the transaction is append
+to the _recvQ.
+
+A transaction is a list of WBRes object wich contain some signals values read on
+the bus ::
+
+    @public
+    class WBRes():
+    ...
+        def __init__(...):
+            self.ack        = ack
+            self.sel        = sel
+            self.adr        = adr
+            self.datrd      = datrd
+            self.datwr      = datwr
+            self.waitStall  = waitStall
+            self.waitAck    = waitAck
+            self.waitIdle   = waitIdle
+
+At the end of simulation if we want to display adr, datr and datwr value
+occured on the bus we will do following for example ::
+    
+      for transaction in wbm._recvQ:
+        wbm.log.info(f"{[f'@{hex(v.adr)}r{hex(v.datrd)}w{hex(0 if v.datwr is None else v.datwr)}' for v in transaction]}")
+    
+We can also register a callback function that will be called each time a
+transaction occured::
+
+  def simple_callback(transaction):
+      print(transaction)
+
+  wbm.add_callback(simple_callback)
+
+But be aware that if a callback is registered, the _recvQ will not be populated.
