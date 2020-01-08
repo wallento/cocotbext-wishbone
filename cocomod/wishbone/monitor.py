@@ -45,9 +45,11 @@ class Wishbone(BusMonitor):
     _optional_signals = ["sel", "err", "stall", "rty"]
     replyTypes = {1 : "ack", 2 : "err", 3 : "rty"}  
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, entity, name, clock, signals_dict=None, **kwargs):
+        if signals_dict is not None:
+            self._signals=signals_dict
         self._width = kwargs.pop('width', 32)
-        BusMonitor.__init__(self, *args, **kwargs)
+        BusMonitor.__init__(self, entity, name, clock, **kwargs)
         # Drive some sensible defaults (setimmediatevalue to avoid x asserts)
         self.bus.ack.setimmediatevalue(0)
         self.bus.datrd.setimmediatevalue(0)
@@ -88,7 +90,7 @@ class WishboneSlave(Wishbone):
         while True:        
             yield int(1)          
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, entity, name, clock, **kwargs):
         datGen = kwargs.pop('datgen', None)
         ackGen = kwargs.pop('ackgen', None)
         waitAckGen = kwargs.pop('waitreplygen', None)
@@ -116,11 +118,10 @@ class WishboneSlave(Wishbone):
         if waitStallGen is not None:
             self._waitStallGen  = self.bitSeqGen(waitStallGen)
             
-        Wishbone.__init__(self, *args, **kwargs)
+        Wishbone.__init__(self, entity, name, clock, **kwargs)
         cocotb.fork(self._stall())
         cocotb.fork(self._clk_cycle_counter())
         cocotb.fork(self._ack())
-        self.log.info("Wishbone Slave created")
         
        
     @coroutine 
@@ -151,7 +152,8 @@ class WishboneSlave(Wishbone):
                 else:
                     yield clkedge                    
                     self._stallCount = 0
-            
+            else:
+                break
             
         
     @coroutine
@@ -235,14 +237,20 @@ class WishboneSlave(Wishbone):
         clkedge = RisingEdge(self.clock)
         #respong and notify the callback function  
         while True:
-            if self._cycle == 0 and self.bus.cyc.value == 1:
-                self._lastTime = self._clk_cycle_count -1
+            try:
+                if self._cycle == 0 and self.bus.cyc.value == 1:
+                    self._lastTime = self._clk_cycle_count -1
+            except ValueError:
+                pass
                 
             self._respond()
-            if self._cycle == 1 and self.bus.cyc.value == 0:
-                self._recv(self._res_buf)
-                self._reply_Q.queue.clear()
-                self._res_buf = []
+            try:
+                if self._cycle == 1 and self.bus.cyc.value == 0:
+                    self._recv(self._res_buf)
+                    self._reply_Q.queue.clear()
+                    self._res_buf = []
+            except ValueError:
+                pass
                 
             self._cycle = self.bus.cyc.value
             yield clkedge
