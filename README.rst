@@ -178,3 +178,14 @@ transaction occured::
   wbm.add_callback(simple_callback)
 
 But be aware that if a callback is registered, the _recvQ will not be populated.
+
+Projects using this module
+--------------------------
+
+Here some project that use this module. Can be usefull to have examples:
+
+- [ChisArmadeus](https://github.com/Martoni/ChisArmadeus): Usefull chisel components for Armadeus boards. It use cocotb for
+  testing. An example is given for op6ul wrapper test [here](https://github.com/Martoni/ChisArmadeus/tree/master/cocotb/op6sp)
+
+- [wbGPIO](https://github.com/Martoni/wbGPIO): General purpose input output
+  wishbone slave written in Chisel. Cocotb testbench is available [here](https://github.com/Martoni/wbGPIO/tree/master/cocotb/gpio)
