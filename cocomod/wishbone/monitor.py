@@ -27,7 +27,8 @@ class WBAux():
 class WBRes():
     """Wishbone Result Wrapper Class. What's happend on the bus plus meta information on timing
     """
-    def __init__(self, ack=0, sel=0xf, adr=0, datrd=None, datwr=None, waitIdle=0, waitStall=0, waitAck=0):
+    def __init__(self, ack=0, sel=0xf, adr=0, datrd=None, datwr=None,
+                 waitIdle=0, waitStall=0, waitAck=0):
         self.ack        = ack
         self.sel        = sel
         self.adr        = adr
@@ -36,7 +37,17 @@ class WBRes():
         self.waitStall  = waitStall
         self.waitAck    = waitAck
         self.waitIdle   = waitIdle
-          
+
+    def to_dict(self):
+        return {
+         "ack"      :self.ack,
+         "sel"      :self.sel,
+         "adr"      :self.adr,
+         "datrd"    :self.datrd,
+         "datwr"    :self.datwr,
+         "waitStall":self.waitStall,
+         "waitAck"  :self.waitAck,
+         "waitIdle" :self.waitIdle}
 
 class Wishbone(BusMonitor):
     """Wishbone
