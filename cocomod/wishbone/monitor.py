@@ -82,11 +82,6 @@ class WishboneSlave(Wishbone):
             for bit in bits:
                 yield bit
     
-    
-    def defaultGen0(self):
-        while True:        
-            yield int(0)
-            
     def __init__(self, entity, name, clock, **kwargs):
         datGen = kwargs.pop('datgen', None)
         ackGen = kwargs.pop('ackgen', None)
