@@ -241,6 +241,13 @@ class WishboneSlave(Wishbone):
         clkedge = RisingEdge(self.clock)
         #respond and notify the callback function
         while True:
+            try:
+                if self._cycle == 1 and self.bus.cyc.value == 0:
+                    self._recv(self._res_buf)
+                    self._reply_Q.queue.clear()
+                    self._res_buf = []
+            except ValueError:
+                pass
 
             while self.bus.stb.value.binstr != '1':
                 yield clkedge
@@ -251,7 +258,6 @@ class WishboneSlave(Wishbone):
                 pass
 
             self._respond()
-
             # wait for response
             while self.bus.ack.value.binstr != '1':
                 if hasattr(self.bus, "err"):
@@ -261,14 +267,6 @@ class WishboneSlave(Wishbone):
                     if self.bus.rty.binstr == '1':
                         break
                 yield clkedge
-
-            try:
-                if self._cycle == 1 and self.bus.cyc.value == 0:
-                    self._recv(self._res_buf)
-                    self._reply_Q.queue.clear()
-                    self._res_buf = []
-            except ValueError:
-                pass
 
             self._cycle = self.bus.cyc.value
             yield clkedge
