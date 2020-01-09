@@ -1,5 +1,6 @@
 
 import cocotb
+from itertools import repeat
 from cocotb.decorators  import coroutine
 from cocotb.monitors    import BusMonitor
 from cocotb.triggers    import RisingEdge
@@ -81,22 +82,14 @@ class WishboneSlave(Wishbone):
             for bit in bits:
                 yield bit
     
-    
-    def defaultGen0(self):
-        while True:        
-            yield int(0)
-            
-    def defaultGen1(self):
-        while True:        
-            yield int(1)          
-
     def __init__(self, entity, name, clock, **kwargs):
         datGen = kwargs.pop('datgen', None)
         ackGen = kwargs.pop('ackgen', None)
         waitAckGen = kwargs.pop('waitreplygen', None)
         waitStallGen = kwargs.pop('waitstallgen', None)
-        #init instance variables    
-        self._acked_ops      = 0  # ack cntr. wait for equality with number of Ops before releasing lock
+        #init instance variables
+        self._acked_ops      = 0  # ack cntr. wait for equality with
+                                  # number of Ops before releasing lock
         self._reply_Q        = Queue() # save datwr, sel, idle
         self._res_buf        = [] # save readdata/ack/err/rty
         self._clk_cycle_count = 0
@@ -105,19 +98,19 @@ class WishboneSlave(Wishbone):
         self._stallCount     = 0        
 
         #init instance generators
-        self._datGen            = self.defaultGen0()
+        self._datGen            = repeat(int(0))
         if datGen is not None:
             self._datGen        = datGen
-        self._ackGen            = self.defaultGen1()        
+        self._ackGen            = repeat(int(1))
         if ackGen is not None:
-            self._ackGen        = ackGen    
-        self._waitAckGen        = self.defaultGen0()
+            self._ackGen        = ackGen
+        self._waitAckGen        = repeat(int(0))
         if waitAckGen is not None:
-            self._waitAckGen    = waitAckGen 
-        self._waitStallGen      = self.defaultGen0()
+            self._waitAckGen    = waitAckGen
+        self._waitStallGen      = repeat(int(0))
         if waitStallGen is not None:
             self._waitStallGen  = self.bitSeqGen(waitStallGen)
-            
+
         Wishbone.__init__(self, entity, name, clock, **kwargs)
         cocotb.fork(self._stall())
         cocotb.fork(self._clk_cycle_counter())
@@ -136,7 +129,6 @@ class WishboneSlave(Wishbone):
             else:
                 self._clk_cycle_count = 0
             yield clkedge
-            
 
     @coroutine
     def _stall(self):
