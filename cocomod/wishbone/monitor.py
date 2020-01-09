@@ -162,7 +162,7 @@ class WishboneSlave(Wishbone):
     @coroutine
     def _ack(self):
         clkedge = RisingEdge(self.clock)         
-        while True: 
+        while True:
             #set defaults
             self.bus.ack    <= 0
             self.bus.datrd  <= 0
@@ -224,12 +224,13 @@ class WishboneSlave(Wishbone):
             #TODO: subtract our own stalltime or, if we're not pipelined, time since last ack    
             idleTime = self._clk_cycle_count - self._lastTime -1    
             _sel = self.bus.sel.value if hasattr(self.bus, "sel") else None
-            res =  WBRes(ack=reply, sel=_sel, adr=self.bus.adr.value,
-                         datrd=rd, datwr=wr, waitIdle=idleTime, waitStall=self._stallCount, waitAck=waitAck)               
+            res = WBRes(ack=reply, sel=_sel, adr=self.bus.adr.value, datrd=rd, datwr=wr,
+                        waitIdle=idleTime, waitStall=self._stallCount, waitAck=waitAck)
             
             #add whats going to happen to the result buffer
             self._res_buf.append(res)
-            #add it to the reply queue for assignment. we need to process ops every cycle, so we can't do the <waitreply> delay here
+            #add it to the reply queue for assignment. we need to process
+            # ops every cycle, so we can't do the <waitreply> delay here
             self._reply_Q.put(res)
             self._lastTime = self._clk_cycle_count
             
@@ -238,15 +239,29 @@ class WishboneSlave(Wishbone):
     @coroutine
     def _monitor_recv(self):
         clkedge = RisingEdge(self.clock)
-        #respong and notify the callback function  
+        #respond and notify the callback function
         while True:
+
+            while self.bus.stb.value.binstr != '1':
+                yield clkedge
             try:
                 if self._cycle == 0 and self.bus.cyc.value == 1:
                     self._lastTime = self._clk_cycle_count -1
             except ValueError:
                 pass
-                
+
             self._respond()
+
+            # wait for response
+            while self.bus.ack.value.binstr != '1':
+                if hasattr(self.bus, "err"):
+                    if self.bus.err.value.binstr == '1':
+                        break
+                if hasattr(self.bus, "rty"):
+                    if self.bus.rty.binstr == '1':
+                        break
+                yield clkedge
+
             try:
                 if self._cycle == 1 and self.bus.cyc.value == 0:
                     self._recv(self._res_buf)
@@ -254,6 +269,6 @@ class WishboneSlave(Wishbone):
                     self._res_buf = []
             except ValueError:
                 pass
-                
+
             self._cycle = self.bus.cyc.value
             yield clkedge
