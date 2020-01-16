@@ -12,18 +12,18 @@ From Github
 
 * Clone the repository::
 
-    $ git clone https://github.com/wallento/cocomod-wishbone.git
+    $ git clone https://github.com/wallento/cocotbext-wishbone.git
 
 * Then install it with pip::
 
-    $ python -m pip install -e cocomod-wishbone
+    $ python -m pip install -e cocotbext-wishbone
 
 From pip global
 ^^^^^^^^^^^^^^^
 
 To install it with pip published globally simply use pip install as usual::
 
-    $ python -m pip install cocomod-wishbone
+    $ python -m pip install cocotbext-wishbone
 
 How to use it
 -------------
@@ -35,8 +35,8 @@ As an example we will instanciate a Wishbone master cocotb driver to read and
 write on our DUT wishbone slave.
 First import this ::
 
-  from cocomod.wishbone.driver import WishboneMaster
-  from cocomod.wishbone.driver import WBOp
+  from cocotbext.wishbone.driver import WishboneMaster
+  from cocotbext.wishbone.driver import WBOp
 
 The DUT ports naming in Verilog is following::
 
@@ -128,7 +128,7 @@ Monitor
 Monitor instantiation works similarly to Driver instantiation. First import
 right module ::
 
-  from cocomod.wishbone.monitor import WishboneSlave
+  from cocotbext.wishbone.monitor import WishboneSlave
 
 Then instantiate the object with right signals names ::
 
