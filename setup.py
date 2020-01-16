@@ -4,16 +4,16 @@ with open("README.rst", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="cocomod-wishbone",
+    name="cocotbext-wishbone",
     use_scm_version={
         "relative_to": __file__,
-        "write_to": "cocomod/wishbone/version.py",
+        "write_to": "cocotbext/wishbone/version.py",
     },
     author="Staf Verhaegen, Mathias Kreider",
     author_email="staf@stafverhaegen.be, m.kreider@gsi.de",
     description="Cocotb Wishbone modules",
     long_description=long_description,
-    packages=["cocomod.wishbone"],
+    packages=["cocotbext.wishbone"],
     install_requires=['cocotb'],
     setup_requires=[
         'setuptools_scm',
