@@ -1,8 +1,7 @@
 cocotb modules for Wishbone bus
 ===============================
 
-This register contains the cocotb driver and monitor modules for the
-Wishbone bus.
+This cocotb extension contains driver and monitor modules for the Wishbone bus.
 
 Install
 -------
@@ -16,14 +15,14 @@ From Github
 
 * Then install it with pip::
 
-    $ python -m pip install -e cocotbext-wishbone
+    $ python3 -m pip install -e cocotbext-wishbone
 
 From pip global
 ^^^^^^^^^^^^^^^
 
 To install it with pip published globally simply use pip install as usual::
 
-    $ python -m pip install cocotbext-wishbone
+    $ python3 -m pip install cocotbext-wishbone
 
 How to use it
 -------------
@@ -31,8 +30,8 @@ How to use it
 Driver
 ^^^^^^
 
-As an example we will instanciate a Wishbone master cocotb driver to read and
-write on our DUT wishbone slave.
+As an example we will instantiate a Wishbone master cocotb driver to read and
+write on a DUT wishbone slave.
 First import this ::
 
   from cocotbext.wishbone.driver import WishboneMaster
@@ -56,7 +55,7 @@ To initialize our master we have to do this::
                             timeout=10) # in clock cycle number
 
 
-But in actuals port name are rarely the same has seen above. It this case – for
+But in actuals port name are rarely the same has seen above. In this case – for
 example actuals ports names are::
 
   input         clock
@@ -68,7 +67,7 @@ example actuals ports names are::
   output        io_wbs_ack_o,
   input         io_wbs_cyc_i,
 
-Then we have to rename it with signals_dict arguments::
+Then we have to rename it with ``signals_dict`` arguments::
 
   self.wbs = WishboneMaster(dut, "io_wbs", dut.clock,
                             width=16,   # size of data bus
@@ -82,9 +81,9 @@ Then we have to rename it with signals_dict arguments::
                                         "ack":  "ack_o" })
 
 In the testbench, to make read/write access we have to use the method
-send_cycle() with a list of special class operator named WBOp().
+``send_cycle()`` with a list of special class operator named ``WBOp()``.
 
-WBOp() accepting following arguments, all with default value::
+``WBOp()`` is accepting the following arguments, all with default value::
 
         adr: address of the operation
         dat: data to write, None indicates a read cycle
@@ -93,19 +92,19 @@ WBOp() accepting following arguments, all with default value::
 
         WBOp(adr=0, dat=None, idle=0, sel=None)
 
-If no dat is given, a wishbone read will be done. If dat is filled, it will be a
+If no ``dat`` is given, a wishbone read will be done. If ``dat`` is filled, it will be a
 write.
 
-For example, to read respectively at adress 2,3,0 then 1. We will do::
+For example, to read respectively at address ``2``, ``3``, ``0`` then ``1``, we will do::
 
     wbRes = yield rdbg.wbs.send_cycle([WBOp(2), WBOp(3), WBOp(0), WBOp(1)])
 
-send_cycle() method return a list of Wishbone Result Wrapper Class WBRes() with
-some data declared like it in driver.py::
+The ``send_cycle()`` method returns a list of Wishbone Result Wrapper Class ``WBRes()`` with
+some data declared like it in :file:`driver.py`::
 
     def __init__(self, ack=0, sel=None, adr=0, datrd=None, datwr=None, waitIdle=0, waitStall=0, waitAck=0):
 
-If we want to print value read, we just have to read datrd value like that::
+If we want to print the value being read, we just have to read ``datrd`` value like so::
 
     rvalues = [wb.datrd for wb in wbRes]
     dut.log.info(f"Returned values : {rvalues}")
@@ -114,19 +113,19 @@ Which will print a log message like following::
 
    1560.00ns INFO     Returned values : [0000000000000000, 0000000000000000, 0000000100000001, 0000000000000000]
 
-We can add some write operations in our send_cycle(), by adding a second value
+We can add some write operations in our ``send_cycle()``, by adding a second value
 in parameters::
 
   wbRes = yield rdbg.wbs.send_cycle([WBOp(3, 0xcafe), WBOp(0), WBOp(3)])
 
-The above line will write 0xcafe at address 3, then read at address 0, then read at
-address 3.
+The above line will write ``0xcafe`` at address ``3``, then read at address ``0``, then read at
+address ``3``.
 
 Monitor
 ^^^^^^^
 
-Monitor instantiation works similarly to Driver instantiation. First import
-right module ::
+The Monitor instantiation works similarly to the Driver instantiation. First import
+the right module ::
 
   from cocotbext.wishbone.monitor import WishboneSlave
 
@@ -142,12 +141,12 @@ Then instantiate the object with right signals names ::
                                "datrd":"dat_i",
                                "ack":  "ack_i" })
 
-WishboneSlave is a monitor, then it's mainly passive class. It will supervise
-the wishbone signal and records transaction in a list named _recvQ.
+``WishboneSlave`` is a monitor, then it's mainly a passive class. It will supervise
+the Wishbone signal and records transaction in a list named ``_recvQ``.
 Each time the monitor detect a transaction on the bus, the transaction is append
-to the _recvQ.
+to ``_recvQ``.
 
-A transaction is a list of WBRes object wich contain some signals values read on
+A transaction is a list of ``WBRes`` objects which contain some signal values read on
 the bus ::
 
     @public
@@ -163,11 +162,11 @@ the bus ::
             self.waitAck    = waitAck
             self.waitIdle   = waitIdle
 
-At the end of simulation if we want to display adr, datr and datwr value
-occured on the bus we will do following for example ::
+At the end of the simulation, if we want to display the ``adr``, ``datrd`` and ``datwr`` values
+on the bus we will do following for example ::
     
       for transaction in wbm._recvQ:
-        wbm.log.info(f"{[f'@{hex(v.adr)}r{hex(v.datrd)}w{hex(0 if v.datwr is None else v.datwr)}' for v in transaction]}")
+          wbm.log.info(f"{[f'@{hex(v.adr)}r{hex(v.datrd)}w{hex(0 if v.datwr is None else v.datwr)}' for v in transaction]}")
     
 We can also register a callback function that will be called each time a
 transaction occured::
@@ -177,15 +176,17 @@ transaction occured::
 
   wbm.add_callback(simple_callback)
 
-But be aware that if a callback is registered, the _recvQ will not be populated.
+But be aware that if a callback is registered, ``_recvQ`` will not be populated.
 
 Projects using this module
 --------------------------
 
-Here some project that use this module. Can be usefull to have examples:
+Here are some projects that use this module, to use as examples:
 
-- [ChisArmadeus](https://github.com/Martoni/ChisArmadeus): Usefull chisel components for Armadeus boards. It use cocotb for
-  testing. An example is given for op6ul wrapper test [here](https://github.com/Martoni/ChisArmadeus/tree/master/cocotb/op6sp)
+- `ChisArmadeus <https://github.com/Martoni/ChisArmadeus>`_: Useful chisel components for Armadeus boards.
+  It uses cocotb for testing.
+  An example is given for ``op6ul`` wrapper test `here <https://github.com/Martoni/ChisArmadeus/tree/master/cocotb/op6sp>`_
 
-- [wbGPIO](https://github.com/Martoni/wbGPIO): General purpose input output
-  wishbone slave written in Chisel. Cocotb testbench is available [here](https://github.com/Martoni/wbGPIO/tree/master/cocotb/gpio)
+- `wbGPIO <https://github.com/Martoni/wbGPIO>`_: General purpose input output
+  wishbone slave written in Chisel.
+  The cocotb testbench is available `here <https://github.com/Martoni/wbGPIO/tree/master/cocotb/gpio>`_
