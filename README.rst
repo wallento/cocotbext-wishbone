@@ -55,8 +55,8 @@ To initialize our master we have to do this::
                             timeout=10) # in clock cycle number
 
 
-But in actuals port name are rarely the same has seen above. In this case – for
-example actuals ports names are::
+But in actuals port name are rarely the same has seen above. In this case
+actuals ports names are for example::
 
   input         clock
   input  [1:0]  io_wbs_adr_i,
@@ -164,10 +164,10 @@ the bus ::
 
 At the end of the simulation, if we want to display the ``adr``, ``datrd`` and ``datwr`` values
 on the bus we will do following for example ::
-    
+
       for transaction in wbm._recvQ:
           wbm.log.info(f"{[f'@{hex(v.adr)}r{hex(v.datrd)}w{hex(0 if v.datwr is None else v.datwr)}' for v in transaction]}")
-    
+
 We can also register a callback function that will be called each time a
 transaction occured::
 
