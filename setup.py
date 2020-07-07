@@ -3,8 +3,6 @@ import setuptools
 with open("README.rst", "r") as fh:
     long_description = fh.read()
 
-print(long_description)
-
 setuptools.setup(
     name="cocotbext-wishbone",
     use_scm_version={
@@ -14,6 +12,7 @@ setuptools.setup(
     author="Staf Verhaegen, Mathias Kreider",
     author_email="staf@stafverhaegen.be, m.kreider@gsi.de",
     description="Cocotb Wishbone modules",
+    long_description=long_description,
     packages=["cocotbext.wishbone"],
     install_requires=['cocotb'],
     setup_requires=[
