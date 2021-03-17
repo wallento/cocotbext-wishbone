@@ -4,7 +4,7 @@ import cocotb
 from cocotb.decorators import coroutine
 from cocotb.triggers import RisingEdge, Event
 from cocotb.drivers import BusDriver
-from cocotb.result import ReturnValue, TestFailure
+from cocotb.result import TestFailure
 from cocotb.binary import BinaryValue
 from cocotb.decorators import public
 
@@ -187,7 +187,7 @@ class WishboneMaster(Wishbone):
                     if (count > self._timeout): 
                         raise TestFailure("Timeout of %u clock cycles reached when on stall from slave" % self._timeout)                
             self.log.debug("Stalled for %u cycles" % count)
-        raise ReturnValue(count)
+        return count
 
 
     @coroutine
@@ -215,7 +215,7 @@ class WishboneMaster(Wishbone):
         self._acked_ops += 1
         self.log.debug("Waited %u cycles for ackknowledge" % count)
 
-        raise ReturnValue(count)    
+        return count
 
 
     def _get_reply(self):
@@ -339,8 +339,8 @@ class WishboneMaster(Wishbone):
                     res.waitAck    -= aux.ts
                     result.append(res)
 
-            raise ReturnValue(result)
+            return result
         else:
             raise TestFailure("Sorry, argument must be a list of WBOp (Wishbone Operation) objects!")
-            raise ReturnValue(None)
+            return None
 
