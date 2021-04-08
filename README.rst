@@ -97,7 +97,7 @@ write.
 
 For example, to read respectively at address ``2``, ``3``, ``0`` then ``1``, we will do::
 
-    wbRes = yield rdbg.wbs.send_cycle([WBOp(2), WBOp(3), WBOp(0), WBOp(1)])
+    wbRes = async rdbg.wbs.send_cycle([WBOp(2), WBOp(3), WBOp(0), WBOp(1)])
 
 The ``send_cycle()`` method returns a list of Wishbone Result Wrapper Class ``WBRes()`` with
 some data declared like it in :file:`driver.py`::
@@ -116,7 +116,7 @@ Which will print a log message like following::
 We can add some write operations in our ``send_cycle()``, by adding a second value
 in parameters::
 
-  wbRes = yield rdbg.wbs.send_cycle([WBOp(3, 0xcafe), WBOp(0), WBOp(3)])
+  wbRes = async rdbg.wbs.send_cycle([WBOp(3, 0xcafe), WBOp(0), WBOp(3)])
 
 The above line will write ``0xcafe`` at address ``3``, then read at address ``0``, then read at
 address ``3``.
