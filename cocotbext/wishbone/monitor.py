@@ -2,7 +2,7 @@
 import cocotb
 from itertools import repeat
 from cocotb.decorators  import coroutine
-from cocotb.monitors    import BusMonitor
+from cocotb_bus.monitors    import BusMonitor
 from cocotb.triggers    import RisingEdge
 from cocotb.result      import TestFailure
 from cocotb.decorators  import public  

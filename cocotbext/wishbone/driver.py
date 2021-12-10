@@ -3,7 +3,7 @@
 import cocotb
 from cocotb.decorators import coroutine
 from cocotb.triggers import RisingEdge, Event
-from cocotb.drivers import BusDriver
+from cocotb_bus.drivers import BusDriver
 from cocotb.result import TestFailure
 from cocotb.binary import BinaryValue
 from cocotb.decorators import public
