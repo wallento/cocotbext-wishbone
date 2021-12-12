@@ -1,8 +1,7 @@
 
 import cocotb
 from itertools import repeat
-from cocotb.decorators  import coroutine
-from cocotb.monitors    import BusMonitor
+from cocotb_bus.monitors    import BusMonitor
 from cocotb.triggers    import RisingEdge
 from cocotb.result      import TestFailure
 from cocotb.decorators  import public  
@@ -49,6 +48,7 @@ class WBRes():
          "waitAck"  :self.waitAck,
          "waitIdle" :self.waitIdle}
 
+
 class Wishbone(BusMonitor):
     """Wishbone
     """
@@ -71,9 +71,7 @@ class Wishbone(BusMonitor):
             self.bus.stall.setimmediatevalue(0)
         if hasattr(self.bus, "rty"):        
             self.bus.rty.setimmediatevalue(0)    
-    
 
-            
 
 class WishboneSlave(Wishbone):
     """Wishbone slave
@@ -85,11 +83,11 @@ class WishboneSlave(Wishbone):
             #make sure there's at least one low cycle in here            
             if lowCnt < 1:
                 lowCnt = 1
-            bits=[]
+            bits = []
             for i in range(0, highCnt):
-               bits.append(1)          
+                bits.append(1)
             for i in range(0, lowCnt):
-               bits.append(0)
+                bits.append(0)
             for bit in bits:
                 yield bit
     
@@ -106,7 +104,7 @@ class WishboneSlave(Wishbone):
         self._clk_cycle_count = 0
         self._cycle          = False
         self._lastTime       = 0
-        self._stallCount     = 0        
+        self._stallCount     = 0
 
         #init instance generators
         self._datGen            = repeat(int(0))
@@ -126,10 +124,8 @@ class WishboneSlave(Wishbone):
         cocotb.fork(self._stall())
         cocotb.fork(self._clk_cycle_counter())
         cocotb.fork(self._ack())
-        
-       
-    @coroutine 
-    def _clk_cycle_counter(self):
+
+    async def _clk_cycle_counter(self):
         """
         """
         clkedge = RisingEdge(self.clock)
@@ -139,37 +135,34 @@ class WishboneSlave(Wishbone):
                 self._clk_cycle_count += 1
             else:
                 self._clk_cycle_count = 0
-            yield clkedge
+            await clkedge
 
-    @coroutine
-    def _stall(self):
+    async def _stall(self):
         clkedge = RisingEdge(self.clock)
         # if stall drops, keep the value for one more clock cycle
         while True:
             if hasattr(self.bus, "stall"):
                 tmpStall = next(self._waitStallGen)
-                self.bus.stall <= tmpStall
+                self.bus.stall.value = tmpStall
                 if bool(tmpStall):                                
                     self._stallCount += 1                    
-                    yield clkedge
+                    await clkedge
                 else:
-                    yield clkedge                    
+                    await clkedge
                     self._stallCount = 0
             else:
                 break
-            
-        
-    @coroutine
-    def _ack(self):
+
+    async def _ack(self):
         clkedge = RisingEdge(self.clock)         
         while True:
             #set defaults
-            self.bus.ack    <= 0
-            self.bus.datrd  <= 0
+            self.bus.ack.value = 0
+            self.bus.datrd.value = 0
             if hasattr(self.bus, "err"):
-                self.bus.err <= 0
+                self.bus.err.value = 0
             if hasattr(self.bus, "rty"):
-                self.bus.rty <= 0        
+                self.bus.rty.value = 0
             
             if not self._reply_Q.empty():
                 #get next reply from queue                    
@@ -180,21 +173,19 @@ class WishboneSlave(Wishbone):
                     waitcnt = rep.waitAck
                     while waitcnt > 0:
                         waitcnt -= 1
-                        yield clkedge
+                        await clkedge
                 
                 #check if the signal we want to assign exists and assign
                 if not hasattr(self.bus, self.replyTypes[rep.ack]):                
                     raise TestFailure("Tried to assign <%s> (%u) to slave reply, but this slave does not have a <%s> line" % (self.replyTypes[rep.ack], rep.ack, self.replyTypes[rep.ack]))
                 if self.replyTypes[rep.ack]    == "ack":
-                    self.bus.ack    <= 1
+                    self.bus.ack.value = 1
                 elif self.replyTypes[rep.ack]  == "err":
-                    self.bus.err    <= 1
+                    self.bus.err.value = 1
                 elif self.replyTypes[rep.ack]  == "rty":
-                    self.bus.rty    <= 1
-                self.bus.datrd  <= rep.datrd
-            yield clkedge
-
-
+                    self.bus.rty.value = 1
+                self.bus.datrd.value = rep.datrd
+            await clkedge
 
     def _respond(self):
         valid = self.bus.cyc.value and self.bus.stb.value
@@ -233,11 +224,8 @@ class WishboneSlave(Wishbone):
             # ops every cycle, so we can't do the <waitreply> delay here
             self._reply_Q.put(res)
             self._lastTime = self._clk_cycle_count
-            
-            
 
-    @coroutine
-    def _monitor_recv(self):
+    async def _monitor_recv(self):
         clkedge = RisingEdge(self.clock)
         #respond and notify the callback function
         while True:
@@ -250,7 +238,7 @@ class WishboneSlave(Wishbone):
                 pass
 
             while self.bus.stb.value.binstr != '1':
-                yield clkedge
+                await clkedge
             try:
                 if self._cycle == 0 and self.bus.cyc.value == 1:
                     self._lastTime = self._clk_cycle_count -1
@@ -264,9 +252,9 @@ class WishboneSlave(Wishbone):
                     if self.bus.err.value.binstr == '1':
                         break
                 if hasattr(self.bus, "rty"):
-                    if self.bus.rty.binstr == '1':
+                    if self.bus.rty.value.binstr == '1':
                         break
-                yield clkedge
+                await clkedge
 
             self._cycle = self.bus.cyc.value
-            yield clkedge
+            await clkedge
