@@ -20,13 +20,15 @@ class WBAux():
 
     wrap meta informations on bus transaction (internal only)
     """
-    def __init__(self, sel=None, adr=0, datwr=None, waitStall=0, waitIdle=0, tsStb=0):
+    def __init__(self, sel=None, adr=0, datwr=None, waitStall=0, waitIdle=0, tsStb=0, cti=0, bte=0):
         self.sel        = sel
         self.adr        = adr
         self.datwr      = datwr
         self.waitIdle   = waitIdle
         self.waitStall  = waitStall
         self.ts         = tsStb
+        self.cti        = cti
+        self.bte        = bte
 
 
 @public
@@ -42,13 +44,17 @@ class WBOp():
         idle: number of clock cycles between asserting cyc and stb
         sel: the selection mask for the operation
         acktimeout: number of maximum clock cycles before asserting ack
+        cti: type of cycles done by the operation
+        bte: burst type extension, currently only used for signaling inc. burst wrap size
     """
-    def __init__(self, adr=0, dat=None, idle=0, sel=None, acktimeout=0):
+    def __init__(self, adr=0, dat=None, idle=0, sel=None, acktimeout=0, cti=0, bte=0):
         self.adr    = adr
         self.dat    = dat
         self.sel    = sel
         self.idle   = idle
         self.acktimeout = acktimeout
+        self.cti    = cti
+        self.bte    = bte
 
 
 @public
@@ -59,7 +65,7 @@ class WBRes():
     What's happend on the bus plus meta information on timing
     """
 
-    def __init__(self, ack=0, sel=None, adr=0, datrd=None, datwr=None, waitIdle=0, waitStall=0, waitAck=0):
+    def __init__(self, ack=0, sel=None, adr=0, datrd=None, datwr=None, waitIdle=0, waitStall=0, waitAck=0, cti=0, bte=0):
         self.ack        = ack
         self.sel        = sel
         self.adr        = adr
@@ -68,15 +74,16 @@ class WBRes():
         self.waitStall  = waitStall
         self.waitAck    = waitAck
         self.waitIdle   = waitIdle
+        self.cti        = cti
+        self.bte        = bte
 
 
-# TODO: Use of pipelined operations
 class Wishbone(BusDriver):
     """
     Wishbone
     """
     _signals = ["cyc", "stb", "we", "adr", "datwr", "datrd", "ack"]
-    _optional_signals = ["sel", "err", "stall", "rty"]
+    _optional_signals = ["sel", "err", "stall", "rty", "cti", "bte"]
 
     def __init__(self, entity, name, clock, width=32, signals_dict=None, **kwargs):
         if signals_dict is not None:
@@ -94,6 +101,12 @@ class Wishbone(BusDriver):
             v = self.bus.sel.value
             v.binstr = "1" * len(self.bus.sel)
             self.bus.sel.value = v
+
+        if hasattr(self.bus, "cti"):
+            self.bus.cti.setimmediatevalue(0)
+
+        if hasattr(self.bus, "bte"):
+            self.bus.bte.setimmediatevalue(0)
 
 
 class WishboneMaster(Wishbone):
@@ -162,6 +175,10 @@ class WishboneMaster(Wishbone):
 
         self.busy = False
         self.busy_event.set()
+        if hasattr(self.bus, "cti"):
+            self.bus.cti.value = 0
+        if hasattr(self.bus, "bte"):
+            self.bus.bte.value = 0
         self.bus.cyc.value = 0
         self.log.debug("Closing cycle")
         await clkedge
@@ -237,13 +254,13 @@ class WishboneMaster(Wishbone):
             if ack:
                 datrd = self.bus.datrd.value
                 #append reply and meta info to result buffer
-                tmpRes =  WBRes(ack=reply, sel=None, adr=None, datrd=datrd, datwr=None, waitIdle=None, waitStall=None, waitAck=self._clk_cycle_count)               
+                tmpRes =  WBRes(ack=reply, sel=None, adr=None, datrd=datrd, datwr=None, waitIdle=None, waitStall=None, waitAck=self._clk_cycle_count, cti=self.bus.cti, bte=self.bus.bte)
                 self._res_buf.append(tmpRes)
                 self._acked_ops += 1
             await clkedge
             count += 1
 
-    async def _drive(self, we, adr, datwr, sel, idle):
+    async def _drive(self, we, adr, datwr, sel, idle, cti, bte):
         """
         Drive the Wishbone Master Out Lines
         """
@@ -256,20 +273,29 @@ class WishboneMaster(Wishbone):
                 while idlecnt > 0:
                     idlecnt -= 1
                     await clkedge
-            # drive outputs    
+            # drive outputs
             self.bus.stb.value = 1
             self.bus.adr.value = adr
             if hasattr(self.bus, "sel"):
                 self.bus.sel.value = sel if sel is not None else BinaryValue("1" * len(self.bus.sel))
+            if hasattr(self.bus, "cti"):
+                self.bus.cti.value = cti
+                if hasattr(self.bus, "bte"):
+                    self.bus.bte.value = bte
+            else:
+                if cti != 0:
+                    self.log.error("Wishbone bus doesn't support burst cycles")
+
             self.bus.datwr.value = datwr
             self.bus.we.value = we
             await clkedge
             #deal with flow control (pipelined wishbone)
             stalled = await self._wait_stall()
             #append operation and meta info to auxiliary buffer
-            self._aux_buf.append(WBAux(sel, adr, datwr, stalled, idle, self._clk_cycle_count))
+            self._aux_buf.append(WBAux(sel, adr, datwr, stalled, idle, self._clk_cycle_count, cti, bte))
             await self._wait_ack()
             self.bus.we.value = 0
+            self.bus.datwr.value = 0
         else:
             self.log.error("Cannot drive the Wishbone bus outside a cycle!")
 
@@ -303,11 +329,11 @@ class WishboneMaster(Wishbone):
                     else:
                         we  = 0
                         dat = 0
-                    await self._drive(we, op.adr, dat, op.sel, op.idle)
+                    await self._drive(we, op.adr, dat, op.sel, op.idle, op.cti, op.bte)
                     if op.sel is not None:
-                        self.log.debug("#%3u WE: %s ADR: 0x%08x DAT: 0x%08x SEL: 0x%1x IDLE: %3u" % (cnt, we, op.adr, dat, op.sel, op.idle))
+                        self.log.debug("#%3u WE: %s ADR: 0x%08x DAT: 0x%08x SEL: 0x%1x IDLE: %3u CTI: 0x%03x BTE: 0x%02x" % (cnt, we, op.adr, dat, op.sel, op.idle, op.cti, op.bte))
                     else:
-                        self.log.debug("#%3u WE: %s ADR: 0x%08x DAT: 0x%08x SEL: None  IDLE: %3u" % (cnt, we, op.adr, dat, op.idle))
+                        self.log.debug("#%3u WE: %s ADR: 0x%08x DAT: 0x%08x SEL: None  IDLE: %3u CTI: 0x%03x BTE: 0x%02x" % (cnt, we, op.adr, dat, op.idle, op.cti, op.bte))
                     cnt += 1
 
                 await self._close_cycle()
@@ -320,6 +346,8 @@ class WishboneMaster(Wishbone):
                     res.waitIdle    = aux.waitIdle
                     res.waitStall   = aux.waitStall
                     res.waitAck    -= aux.ts
+                    res.cti         = aux.cti
+                    res.bte         = aux.bte
                     result.append(res)
 
             return result
