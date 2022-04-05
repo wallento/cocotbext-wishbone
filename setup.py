@@ -20,7 +20,7 @@ setuptools.setup(
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: BSD License",
+        "License :: OSI Approved :: Apache-2.0",
         "Operating System :: OS Independent",
         "Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)",
     ],
