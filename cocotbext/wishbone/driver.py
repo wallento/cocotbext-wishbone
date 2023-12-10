@@ -47,7 +47,7 @@ class WBOp():
         cti: type of cycles done by the operation
         bte: burst type extension, currently only used for signaling inc. burst wrap size
     """
-    def __init__(self, adr=0, dat=None, idle=0, sel=None, acktimeout=0, cti=0, bte=0):
+    def __init__(self, adr=0, dat=None, idle=0, sel=0xF, acktimeout=0, cti=0, bte=0):
         self.adr    = adr
         self.dat    = dat
         self.sel    = sel
@@ -88,7 +88,7 @@ class Wishbone(BusDriver):
     def __init__(self, entity, name, clock, width=32, signals_dict=None, **kwargs):
         if signals_dict is not None:
             self._signals=signals_dict
-        BusDriver.__init__(self, entity, name, clock, **kwargs)
+        BusDriver.__init__(self, entity, name, clock, case_insensitive=False, **kwargs)
         # Drive some sensible defaults (setimmediatevalue to avoid x asserts)
         self._width = width
         self.bus.cyc.setimmediatevalue(0)
@@ -146,8 +146,8 @@ class WishboneMaster(Wishbone):
             print('\n--------\nsarasa')
         self.busy_event.clear()
         self.busy       = True
-        cocotb.fork(self._read())
-        cocotb.fork(self._clk_cycle_counter()) 
+        cocotb.start_soon(self._read())
+        cocotb.start_soon(self._clk_cycle_counter()) 
         self.bus.cyc.value = 1
         self._acked_ops = 0  
         self._res_buf   = [] 
@@ -254,7 +254,7 @@ class WishboneMaster(Wishbone):
             if ack:
                 datrd = self.bus.datrd.value
                 #append reply and meta info to result buffer
-                tmpRes =  WBRes(ack=reply, sel=None, adr=None, datrd=datrd, datwr=None, waitIdle=None, waitStall=None, waitAck=self._clk_cycle_count, cti=self.bus.cti, bte=self.bus.bte)
+                tmpRes =  WBRes(ack=reply, sel=None, adr=None, datrd=datrd, datwr=None, waitIdle=None, waitStall=None, waitAck=self._clk_cycle_count, cti=None, bte=None)
                 self._res_buf.append(tmpRes)
                 self._acked_ops += 1
             await clkedge
