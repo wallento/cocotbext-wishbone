@@ -1,7 +1,6 @@
 
-
 import cocotb
-from cocotb.triggers import RisingEdge, Event
+from cocotb.triggers import FallingEdge, RisingEdge, Event
 from cocotb_bus.drivers import BusDriver
 from cocotb.result import TestFailure
 from cocotb.binary import BinaryValue
@@ -247,7 +246,7 @@ class WishboneMaster(Wishbone):
         Reader for slave replies
         """
         count = 0
-        clkedge = RisingEdge(self.clock)
+        clkedge = FallingEdge(self.clock)
         while self.busy:
             ack, reply = self._get_reply()
             # valid reply?
