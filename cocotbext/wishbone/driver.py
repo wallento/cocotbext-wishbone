@@ -1,7 +1,6 @@
 
-
 import cocotb
-from cocotb.triggers import RisingEdge, Event
+from cocotb.triggers import FallingEdge, RisingEdge, Event
 from cocotb_bus.drivers import BusDriver
 from cocotb.result import TestFailure
 from cocotb.binary import BinaryValue
@@ -247,7 +246,7 @@ class WishboneMaster(Wishbone):
         Reader for slave replies
         """
         count = 0
-        clkedge = RisingEdge(self.clock)
+        clkedge = FallingEdge(self.clock)
         while self.busy:
             ack, reply = self._get_reply()
             # valid reply?
@@ -256,7 +255,7 @@ class WishboneMaster(Wishbone):
                 #append reply and meta info to result buffer
                 tmpRes =  WBRes(ack=reply, sel=None, adr=None, datrd=datrd, datwr=None, waitIdle=None, waitStall=None, waitAck=self._clk_cycle_count, cti=None, bte=None)
                 self._res_buf.append(tmpRes)
-                self._acked_ops += 1
+
             await clkedge
             count += 1
 
