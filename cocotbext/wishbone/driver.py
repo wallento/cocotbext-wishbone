@@ -256,7 +256,7 @@ class WishboneMaster(Wishbone):
                 #append reply and meta info to result buffer
                 tmpRes =  WBRes(ack=reply, sel=None, adr=None, datrd=datrd, datwr=None, waitIdle=None, waitStall=None, waitAck=self._clk_cycle_count, cti=None, bte=None)
                 self._res_buf.append(tmpRes)
-                self._acked_ops += 1
+
             await clkedge
             count += 1
 
