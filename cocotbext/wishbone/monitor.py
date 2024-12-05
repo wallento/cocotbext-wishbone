@@ -121,9 +121,9 @@ class WishboneSlave(Wishbone):
             self._waitStallGen  = self.bitSeqGen(waitStallGen)
 
         Wishbone.__init__(self, entity, name, clock, **kwargs)
-        cocotb.fork(self._stall())
-        cocotb.fork(self._clk_cycle_counter())
-        cocotb.fork(self._ack())
+        cocotb.start_soon(self._stall())
+        cocotb.start_soon(self._clk_cycle_counter())
+        cocotb.start_soon(self._ack())
 
     async def _clk_cycle_counter(self):
         """
