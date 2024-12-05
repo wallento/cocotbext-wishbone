@@ -229,15 +229,19 @@ class WishboneSlave(Wishbone):
         clkedge = RisingEdge(self.clock)
         #respond and notify the callback function
         while True:
-            try:
-                if self._cycle == 1 and self.bus.cyc.value == 0:
-                    self._recv(self._res_buf)
-                    self._reply_Q.queue.clear()
-                    self._res_buf = []
-            except ValueError:
-                pass
 
             while self.bus.stb.value.binstr != '1':
+                # Permission 3.05: MASTER interfaces MAY assert [CYC_O] indefinitely.
+                # i.e after [STB_O] was negated.
+                try:
+                    if self._cycle == 1 and self.bus.cyc.value == 0:
+                        self._recv(self._res_buf)
+                        self._reply_Q.queue.clear()
+                        self._res_buf = []
+                        self._cycle = 0
+                except ValueError:
+                    pass
+
                 await clkedge
             try:
                 if self._cycle == 0 and self.bus.cyc.value == 1:
