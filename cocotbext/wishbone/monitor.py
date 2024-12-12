@@ -4,7 +4,7 @@ from itertools import repeat
 from cocotb_bus.monitors    import BusMonitor
 from cocotb.triggers    import RisingEdge
 from cocotb.result      import TestFailure
-from cocotb.decorators  import public  
+from cocotb.decorators  import public
 try:
     from Queue import Queue # Python 2.x
 except ImportError:
@@ -16,7 +16,7 @@ class WBAux():
     """
     def __init__(self, sel=0xf, adr=0, datwr=None, waitStall=0, waitIdle=0, tsStb=0):
         self.adr        = adr
-        self.datwr      = datwr        
+        self.datwr      = datwr
         self.sel        = sel
         self.waitStall  = waitStall
         self.ts         = tsStb
@@ -52,10 +52,10 @@ class WBRes():
 class Wishbone(BusMonitor):
     """Wishbone
     """
-    
+
     _signals = ["cyc", "stb", "we", "adr", "datwr", "datrd", "ack"]
     _optional_signals = ["sel", "err", "stall", "rty"]
-    replyTypes = {1 : "ack", 2 : "err", 3 : "rty"}  
+    replyTypes = {1 : "ack", 2 : "err", 3 : "rty"}
 
     def __init__(self, entity, name, clock, signals_dict=None, **kwargs):
         if signals_dict is not None:
@@ -65,22 +65,22 @@ class Wishbone(BusMonitor):
         # Drive some sensible defaults (setimmediatevalue to avoid x asserts)
         self.bus.ack.setimmediatevalue(0)
         self.bus.datrd.setimmediatevalue(0)
-        if hasattr(self.bus, "err"):        
+        if hasattr(self.bus, "err"):
             self.bus.err.setimmediatevalue(0)
-        if hasattr(self.bus, "stall"): 
+        if hasattr(self.bus, "stall"):
             self.bus.stall.setimmediatevalue(0)
-        if hasattr(self.bus, "rty"):        
-            self.bus.rty.setimmediatevalue(0)    
+        if hasattr(self.bus, "rty"):
+            self.bus.rty.setimmediatevalue(0)
 
 
 class WishboneSlave(Wishbone):
     """Wishbone slave
     """
-    
+
     def bitSeqGen(self, tupleGen):
-        while True: 
+        while True:
             [highCnt, lowCnt] = next(tupleGen)
-            #make sure there's at least one low cycle in here            
+            #make sure there's at least one low cycle in here
             if lowCnt < 1:
                 lowCnt = 1
             bits = []
@@ -90,7 +90,7 @@ class WishboneSlave(Wishbone):
                 bits.append(0)
             for bit in bits:
                 yield bit
-    
+
     def __init__(self, entity, name, clock, **kwargs):
         datGen = kwargs.pop('datgen', None)
         ackGen = kwargs.pop('ackgen', None)
@@ -121,9 +121,9 @@ class WishboneSlave(Wishbone):
             self._waitStallGen  = self.bitSeqGen(waitStallGen)
 
         Wishbone.__init__(self, entity, name, clock, **kwargs)
-        cocotb.fork(self._stall())
-        cocotb.fork(self._clk_cycle_counter())
-        cocotb.fork(self._ack())
+        cocotb.start_soon(self._stall())
+        cocotb.start_soon(self._clk_cycle_counter())
+        cocotb.start_soon(self._ack())
 
     async def _clk_cycle_counter(self):
         """
@@ -144,8 +144,8 @@ class WishboneSlave(Wishbone):
             if hasattr(self.bus, "stall"):
                 tmpStall = next(self._waitStallGen)
                 self.bus.stall.value = tmpStall
-                if bool(tmpStall):                                
-                    self._stallCount += 1                    
+                if bool(tmpStall):
+                    self._stallCount += 1
                     await clkedge
                 else:
                     await clkedge
@@ -154,7 +154,7 @@ class WishboneSlave(Wishbone):
                 break
 
     async def _ack(self):
-        clkedge = RisingEdge(self.clock)         
+        clkedge = RisingEdge(self.clock)
         while True:
             #set defaults
             self.bus.ack.value = 0
@@ -163,20 +163,20 @@ class WishboneSlave(Wishbone):
                 self.bus.err.value = 0
             if hasattr(self.bus, "rty"):
                 self.bus.rty.value = 0
-            
+
             if not self._reply_Q.empty():
-                #get next reply from queue                    
+                #get next reply from queue
                 rep = self._reply_Q.get_nowait()
-                
+
                 #wait <waitAck> clock cycles before replying
                 if rep.waitAck is not None:
                     waitcnt = rep.waitAck
                     while waitcnt > 0:
                         waitcnt -= 1
                         await clkedge
-                
+
                 #check if the signal we want to assign exists and assign
-                if not hasattr(self.bus, self.replyTypes[rep.ack]):                
+                if not hasattr(self.bus, self.replyTypes[rep.ack]):
                     raise TestFailure("Tried to assign <%s> (%u) to slave reply, but this slave does not have a <%s> line" % (self.replyTypes[rep.ack], rep.ack, self.replyTypes[rep.ack]))
                 if self.replyTypes[rep.ack]    == "ack":
                     self.bus.ack.value = 1
@@ -189,35 +189,35 @@ class WishboneSlave(Wishbone):
 
     def _respond(self):
         valid = self.bus.cyc.value and self.bus.stb.value
-        #if there is a stall signal, take it into account        
+        #if there is a stall signal, take it into account
         if hasattr(self.bus, "stall"):
             valid = valid and not self.bus.stall.value
-        
+
         if valid:
-            #wait before replying ?    
+            #wait before replying ?
             waitAck = next(self._waitAckGen)
-            #Response: rddata/don't care        
+            #Response: rddata/don't care
             if not self.bus.we.value:
                 rd = next(self._datGen)
             else:
                 rd = 0
-         
+
             #Response: ack/err/rty
             reply = next(self._ackGen)
             if reply not in self.replyTypes:
                 raise TestFailure("Tried to assign unknown reply type (%u) to slave reply. Valid is 1-3 (ack, err, rty)" %  reply)
-            
+
             wr = None
             if self.bus.we.value:
                 wr = self.bus.datwr.value
-            
+
             #get the time the master idled since the last operation
-            #TODO: subtract our own stalltime or, if we're not pipelined, time since last ack    
-            idleTime = self._clk_cycle_count - self._lastTime -1    
+            #TODO: subtract our own stalltime or, if we're not pipelined, time since last ack
+            idleTime = self._clk_cycle_count - self._lastTime -1
             _sel = self.bus.sel.value if hasattr(self.bus, "sel") else None
             res = WBRes(ack=reply, sel=_sel, adr=self.bus.adr.value, datrd=rd, datwr=wr,
                         waitIdle=idleTime, waitStall=self._stallCount, waitAck=waitAck)
-            
+
             #add whats going to happen to the result buffer
             self._res_buf.append(res)
             #add it to the reply queue for assignment. we need to process
@@ -229,15 +229,19 @@ class WishboneSlave(Wishbone):
         clkedge = RisingEdge(self.clock)
         #respond and notify the callback function
         while True:
-            try:
-                if self._cycle == 1 and self.bus.cyc.value == 0:
-                    self._recv(self._res_buf)
-                    self._reply_Q.queue.clear()
-                    self._res_buf = []
-            except ValueError:
-                pass
 
             while self.bus.stb.value.binstr != '1':
+                # Permission 3.05: MASTER interfaces MAY assert [CYC_O] indefinitely.
+                # i.e after [STB_O] was negated.
+                try:
+                    if self._cycle == 1 and self.bus.cyc.value == 0:
+                        self._recv(self._res_buf)
+                        self._reply_Q.queue.clear()
+                        self._res_buf = []
+                        self._cycle = 0
+                except ValueError:
+                    pass
+
                 await clkedge
             try:
                 if self._cycle == 0 and self.bus.cyc.value == 1:
